@@ -24,6 +24,7 @@ import type {
 export interface IMenuContext {
   total: number;
   menuItems: IMenuItem[];
+  invoice?: LnUrlRequestInvoiceResponse;
   setMenuItems: Dispatch<SetStateAction<IMenuItem[]>>;
   checkOut: () => Promise<LnUrlRequestInvoiceResponse>;
 }
@@ -48,6 +49,7 @@ interface IMenuProviderProps {
 export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [menuItems, setMenuItems] = useState<IMenuItem[]>([]);
   const [total, setTotal] = useState<number>(0);
+  const [invoice, setInvoice] = useState<LnUrlRequestInvoiceResponse>();
 
   // Checkout function
   const checkOut =
@@ -55,10 +57,11 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
       const args: LnUrlRequestInvoiceArgs = {
         lnUrlOrAddress: process.env.NEXT_PUBLIC_DESTINATION!,
         tokens: utils.toSats(total),
+        comment: "Algo prueba",
       };
 
       const invoice: LnUrlRequestInvoiceResponse = await requestInvoice(args);
-
+      setInvoice(invoice);
       return invoice;
     }, [total]);
 
@@ -73,7 +76,9 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   }, [menuItems]);
 
   return (
-    <MenuContext.Provider value={{ total, menuItems, setMenuItems, checkOut }}>
+    <MenuContext.Provider
+      value={{ total, invoice, menuItems, setMenuItems, checkOut }}
+    >
       {children}
     </MenuContext.Provider>
   );
