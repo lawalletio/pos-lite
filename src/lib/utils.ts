@@ -6,7 +6,6 @@ type MenuItemType = { id: string; name: string; price: number };
 const menuJSON = menuJSONFile as unknown as MenuItemType[];
 
 export const fetchMenuItems = (): IMenuItem[] => {
-  console.dir(menuJSON);
   return menuJSON.map((item) => {
     return { ...item, quantity: 0 };
   });
