@@ -3,13 +3,20 @@ import MenuItem from "~/components/MenuItem";
 import { useMenu } from "~/contexts/Menu";
 
 export default function Home() {
-  const { menuItems, setMenuItems, total } = useMenu();
+  const { menuItems, total, setMenuItems, checkOut } = useMenu();
 
   const setQuantity = (menuIndex: number, quantity: number) => {
     setMenuItems((items) => {
       items[menuIndex]!.quantity = quantity;
       return [...items];
     });
+  };
+
+  const nextStep = async () => {
+    const invoice = await checkOut();
+
+    console.dir(invoice);
+    alert(invoice.invoice);
   };
 
   return (
@@ -37,7 +44,10 @@ export default function Home() {
           </div>
           {total > 0 ? (
             <div className="absolute bottom-5 w-full p-5 text-white">
-              <button className="w-full rounded-xl bg-slate-300/20 p-5">
+              <button
+                onClick={() => void nextStep()}
+                className="w-full rounded-xl bg-slate-300/20 p-5"
+              >
                 Pagar ARS {total}
               </button>
             </div>
