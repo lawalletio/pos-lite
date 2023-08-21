@@ -1,9 +1,12 @@
 import Head from "next/head";
+import { useRouter } from "next/router";
 import MenuItem from "~/components/MenuItem";
 import { useMenu } from "~/contexts/Menu";
 
 export default function Home() {
   const { menuItems, total, setMenuItems, checkOut } = useMenu();
+
+  const router = useRouter();
 
   const setQuantity = (menuIndex: number, quantity: number) => {
     setMenuItems((items) => {
@@ -16,7 +19,8 @@ export default function Home() {
     const invoice = await checkOut();
 
     console.dir(invoice);
-    alert(invoice.invoice);
+    // alert(invoice.invoice);
+    void router.push("/checkout");
   };
 
   return (
