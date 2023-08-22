@@ -1,12 +1,12 @@
 [
   {
-    "id": "pizza",
-    "name": "Pizza",
-    "price": 600
+    "id": "cafe",
+    "name": "Café",
+    "price": 200
   },
   {
-    "id": "birra",
-    "name": "Birra",
-    "price": 700
+    "id": "tostado",
+    "name": "Tostado",
+    "price": 400
   }
 ]
