@@ -1,10 +1,13 @@
 import Head from "next/head";
 import { useMenu } from "~/contexts/Menu";
 import QRCode from "react-qr-code";
+import { decode } from "bolt11";
 
 export default function Home() {
   const { invoice, total } = useMenu();
 
+  console.dir("decode:");
+  console.dir(decode(invoice!.invoice));
   return (
     <>
       <Head>
@@ -20,7 +23,8 @@ export default function Home() {
           <div className="bg-white p-2">
             <QRCode value={invoice?.invoice ?? "nothing"} />
           </div>
-          <div className="text-4xl text-white">Pagar ARS {total}</div>
+          <div className="text-4xl text-white">{total} sats</div>
+          <div className="text-3xl text-white">ARS {total}</div>
         </div>
       </main>
     </>
