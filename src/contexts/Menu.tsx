@@ -11,6 +11,12 @@ import {
 import { fetchMenuItems, calcTotal } from "~/lib/utils";
 import { utils } from "lnurl-pay";
 import { requestInvoice } from "lnurl-pay";
+import {
+  generatePrivateKey,
+  getPublicKey,
+  getSignature,
+  getEventHash,
+} from "nostr-tools";
 
 // Types
 import type { Dispatch, SetStateAction } from "react";
@@ -19,6 +25,7 @@ import type {
   LnUrlRequestInvoiceArgs,
   LnUrlRequestInvoiceResponse,
 } from "lnurl-pay/dist/types/types";
+import type { UnsignedEvent, Event } from "nostr-tools";
 
 // Interface
 export interface IMenuContext {
@@ -46,6 +53,9 @@ interface IMenuProviderProps {
   children: React.ReactNode;
 }
 
+const DESTINATION_LNURL = process.env.NEXT_PUBLIC_DESTINATION!;
+const NOSTR_RELAY = process.env.NEXT_PUBLIC_NOSTR_RELAY!;
+
 export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [menuItems, setMenuItems] = useState<IMenuItem[]>([]);
   const [total, setTotal] = useState<number>(0);
@@ -55,10 +65,39 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const checkOut =
     useCallback(async (): Promise<LnUrlRequestInvoiceResponse> => {
       const args: LnUrlRequestInvoiceArgs = {
-        lnUrlOrAddress: process.env.NEXT_PUBLIC_DESTINATION!,
+        lnUrlOrAddress: DESTINATION_LNURL,
         tokens: utils.toSats(total),
         comment: "Algo prueba",
       };
+
+      const receipientPubkey = "asdasd";
+      const relays = [NOSTR_RELAY];
+
+      // This POS
+      const senderPrivkey = generatePrivateKey();
+      const senderPubkey = getPublicKey(senderPrivkey);
+
+      const unsignedEvent: UnsignedEvent = {
+        kind: 9734,
+        content: "",
+        pubkey: senderPubkey,
+        created_at: Math.round(Date.now() / 1000),
+        tags: [
+          ["relays", ...relays],
+          ["amount", total.toString()],
+          ["lnurl", DESTINATION_LNURL],
+          ["p", receipientPubkey],
+        ] as string[][],
+      };
+
+      const event: Event = {
+        id: getEventHash(unsignedEvent),
+        sig: getSignature(unsignedEvent, senderPrivkey),
+        ...unsignedEvent,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const encodedEvent = encodeURI(JSON.stringify(event));
 
       const invoice: LnUrlRequestInvoiceResponse = await requestInvoice(args);
       setInvoice(invoice);
