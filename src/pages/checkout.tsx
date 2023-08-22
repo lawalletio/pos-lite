@@ -1,13 +1,12 @@
 import Head from "next/head";
 import { useMenu } from "~/contexts/Menu";
 import QRCode from "react-qr-code";
-import { decode } from "bolt11";
 
 export default function Home() {
-  const { invoice, total } = useMenu();
+  const { invoice, total, totalSats } = useMenu();
 
-  console.dir("decode:");
-  console.dir(decode(invoice!.invoice));
+  // console.dir("decode:");
+  // console.dir(decode(invoice!));
   return (
     <>
       <Head>
@@ -21,9 +20,9 @@ export default function Home() {
             La Crypta POS
           </h1>
           <div className="bg-white p-2">
-            <QRCode value={invoice?.invoice ?? "nothing"} />
+            <QRCode value={invoice ?? "nothing"} />
           </div>
-          <div className="text-4xl text-white">{total} sats</div>
+          <div className="text-4xl text-white">{totalSats} sats</div>
           <div className="text-3xl text-white">ARS {total}</div>
         </div>
       </main>
