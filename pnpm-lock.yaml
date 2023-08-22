@@ -8,6 +8,9 @@ dependencies:
   '@t3-oss/env-nextjs':
     specifier: ^0.3.1
     version: 0.3.1(typescript@5.0.4)(zod@3.21.4)
+  axios:
+    specifier: ^1.4.0
+    version: 1.4.0
   bolt11:
     specifier: ^1.4.1
     version: 1.4.1
