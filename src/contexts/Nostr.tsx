@@ -63,6 +63,7 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
     },
     [destination, recipientPubkey]
   );
+
   return (
     <NostrContext.Provider value={{ generateZapEvent }}>
       {children}

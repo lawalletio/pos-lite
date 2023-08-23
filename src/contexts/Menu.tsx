@@ -55,12 +55,12 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [invoice, setInvoice] = useState<string>();
 
   const { callbackUrl, destination } = useLN();
-  const {} = useNostr();
+  const { generateZapEvent } = useNostr();
 
   // Checkout function
   const checkOut = useCallback(async (): Promise<string> => {
     const amountMillisats = totalSats * 1000;
-
+    const event = generateZapEvent!(amountMillisats);
     const encodedEvent = encodeURI(JSON.stringify(event));
 
     // fetch json using axios
