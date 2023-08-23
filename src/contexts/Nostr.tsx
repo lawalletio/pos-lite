@@ -16,13 +16,11 @@ import { useLN } from "./LN";
 // Interface
 export interface INostrContext {
   pubkey?: string;
-  generateZapEvent: (amountMillisats: number) => Event;
+  generateZapEvent?: (amountMillisats: number) => Event;
 }
 
 // Context
-export const NostrContext = createContext<INostrContext>({
-  generateZapEvent: function (_amountMillisats: number): Event
-});
+export const NostrContext = createContext<INostrContext>({});
 
 // Component Props
 interface INostrProviderProps {
