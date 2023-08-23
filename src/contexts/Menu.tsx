@@ -24,8 +24,8 @@ export interface IMenuContext {
   totalSats: number;
   menuItems: IMenuItem[];
   invoice?: string;
-  setMenuItems: Dispatch<SetStateAction<IMenuItem[]>>;
-  checkOut: () => Promise<string>;
+  setMenuItems?: Dispatch<SetStateAction<IMenuItem[]>>;
+  checkOut?: () => Promise<{ invoice: string; eventId: string }>;
 }
 
 // Context
@@ -33,12 +33,6 @@ export const MenuContext = createContext<IMenuContext>({
   total: 0,
   totalSats: 0,
   menuItems: [],
-  setMenuItems: function (_value: SetStateAction<IMenuItem[]>): void {
-    throw new Error("Function not implemented.");
-  },
-  checkOut: function (): Promise<string> {
-    throw new Error("Function not implemented.");
-  },
 });
 
 // Component Props
@@ -58,7 +52,10 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const { generateZapEvent } = useNostr();
 
   // Checkout function
-  const checkOut = useCallback(async (): Promise<string> => {
+  const checkOut = useCallback(async (): Promise<{
+    invoice: string;
+    eventId: string;
+  }> => {
     const amountMillisats = totalSats * 1000;
     const event = generateZapEvent!(amountMillisats);
     const encodedEvent = encodeURI(JSON.stringify(event));
@@ -72,8 +69,9 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
     const invoice = response.data.pr as string;
     setInvoice(invoice);
 
-    return invoice;
-  }, [totalSats]);
+    return { invoice, eventId: event.id };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callbackUrl, destination, totalSats]);
 
   // Fetch menu items
   useEffect(() => {

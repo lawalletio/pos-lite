@@ -9,18 +9,18 @@ export default function Home() {
   const router = useRouter();
 
   const setQuantity = (menuIndex: number, quantity: number) => {
-    setMenuItems((items) => {
+    setMenuItems!((items) => {
       items[menuIndex]!.quantity = quantity;
       return [...items];
     });
   };
 
   const nextStep = async () => {
-    const invoice = await checkOut();
+    const { invoice, eventId } = await checkOut!();
 
     console.dir(invoice);
     // alert(invoice.invoice);
-    void router.push("/checkout");
+    void router.push(`/checkout/${eventId}`);
   };
 
   return (

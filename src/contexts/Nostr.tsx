@@ -1,7 +1,14 @@
 // React
-import { createContext, useCallback, useContext } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
-import type { Event, UnsignedEvent } from "nostr-tools";
+// Types
+import type { Event, Sub, UnsignedEvent } from "nostr-tools";
 
 // Utils
 import {
@@ -9,14 +16,17 @@ import {
   getEventHash,
   getPublicKey,
   getSignature,
+  relayInit,
 } from "nostr-tools";
 
+// Hooks
 import { useLN } from "./LN";
+import { IMenuItem } from "~/types/menu";
 
-// Interface
+// Interfaces
 export interface INostrContext {
-  pubkey?: string;
   generateZapEvent?: (amountMillisats: number) => Event;
+  subscribeZap?: (eventId: string, cb: (_event: Event) => void) => Sub;
 }
 
 // Context
@@ -27,19 +37,19 @@ interface INostrProviderProps {
   children: React.ReactNode;
 }
 
-const LOCAL_PRIVATE_KEY = generatePrivateKey();
+const LOCAL_PRIVATE_KEY = process.env.NEXT_PUBLIC_LOCAL_PRIVATE_KEY!;
 const LOCAL_PUBLIC_KEY = getPublicKey(LOCAL_PRIVATE_KEY);
+
 const NOSTR_RELAY = process.env.NEXT_PUBLIC_NOSTR_RELAY!;
 
 const relays = [NOSTR_RELAY];
+const relayPool = relayInit(NOSTR_RELAY);
 
 export const NostrProvider = ({ children }: INostrProviderProps) => {
   const { recipientPubkey, destination } = useLN();
 
   const generateZapEvent = useCallback(
     (amountMillisats: number): Event => {
-      console.info("recipientPubkey:", recipientPubkey);
-
       const unsignedEvent: UnsignedEvent = {
         kind: 9734,
         content: "",
@@ -59,13 +69,71 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
         ...unsignedEvent,
       };
 
+      console.info("zap event: ");
+      console.dir(event);
+
       return event;
     },
     [destination, recipientPubkey]
   );
 
+  const generateOrderEvent = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (content: any): Event => {
+      const unsignedEvent: UnsignedEvent = {
+        kind: 1,
+        content: JSON.stringify(content),
+        pubkey: LOCAL_PUBLIC_KEY,
+        created_at: Math.round(Date.now() / 1000),
+        tags: [
+          ["relays", ...relays],
+          ["p", LOCAL_PUBLIC_KEY],
+        ] as string[][],
+      };
+
+      const event: Event = {
+        id: getEventHash(unsignedEvent),
+        sig: getSignature(unsignedEvent, LOCAL_PRIVATE_KEY),
+        ...unsignedEvent,
+      };
+
+      console.info("order: ");
+      console.dir(event);
+
+      return event;
+    },
+    []
+  );
+
+  const subscribeZap = (eventId: string, cb: (_event: Event) => void) => {
+    console.info(`Listening for zap (${eventId})...`);
+    const sub = relayPool.sub([
+      {
+        kinds: [9735],
+        authors: [recipientPubkey!],
+        // "#e": [eventId],
+      },
+    ]);
+
+    sub.on("event", cb);
+
+    return sub;
+  };
+
+  useEffect(() => {
+    console.info("Connecting....");
+    void relayPool.connect().then(() => {
+      console.info("Connected");
+    });
+
+    return () => {
+      console.info("Unsubscribed");
+      relayPool.close();
+    };
+  }, []);
+
   return (
-    <NostrContext.Provider value={{ generateZapEvent }}>
+    <NostrContext.Provider value={{ generateZapEvent, subscribeZap }}>
       {children}
     </NostrContext.Provider>
   );
