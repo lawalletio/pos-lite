@@ -1,12 +1,39 @@
 import Head from "next/head";
 import { useMenu } from "~/contexts/Menu";
 import QRCode from "react-qr-code";
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import { useNostr } from "~/contexts/Nostr";
+import type { Event } from "nostr-tools";
 
 export default function Home() {
   const { invoice, total, totalSats } = useMenu();
 
-  // console.dir("decode:");
-  // console.dir(decode(invoice!));
+  const { subscribeZap } = useNostr();
+
+  const {
+    query: { eventId },
+  } = useRouter();
+
+  const onZap = (event: Event) => {
+    console.info("Zappeada!!");
+    console.dir(event);
+  };
+
+  useEffect(() => {
+    if (!eventId) {
+      return;
+    }
+    console.info("eventId", eventId);
+
+    console.info("START");
+    const sub = subscribeZap!(eventId as string, onZap);
+
+    return () => {
+      sub.unsub();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
   return (
     <>
       <Head>
