@@ -7,15 +7,34 @@ import { useNostr } from "~/contexts/Nostr";
 import { validateEvent, type Event } from "nostr-tools";
 import bolt11 from "bolt11";
 import { useLN } from "~/contexts/LN";
+import { useOrder } from "~/contexts/Order";
 
 export default function Home() {
   const { invoice, total, totalSats } = useMenu();
   const { subscribeZap } = useNostr();
   const { recipientPubkey } = useLN();
+  const { orderId } = useOrder();
 
   const {
-    query: { eventId },
+    query: { orderId: queryOrderId },
   } = useRouter();
+
+  useEffect(() => {
+    const sub = subscribeZap!(queryOrderId as string, onZap);
+
+    return () => {
+      sub.unsub();
+    };
+  }, [orderId]);
+
+  useEffect(() => {
+    if (!queryOrderId || queryOrderId === orderId) {
+      return;
+    }
+    console.info("orderd", queryOrderId);
+
+    console.info("START");
+  }, [queryOrderId]);
 
   const onZap = (event: Event) => {
     if (event.pubkey !== recipientPubkey) {
@@ -44,21 +63,6 @@ export default function Home() {
 
     alert("Amount paid:" + decodedPaidInvoice.millisatoshis);
   };
-
-  useEffect(() => {
-    if (!eventId) {
-      return;
-    }
-    console.info("eventId", eventId);
-
-    console.info("START");
-    const sub = subscribeZap!(eventId as string, onZap);
-
-    return () => {
-      sub.unsub();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
   return (
     <>
       <Head>
