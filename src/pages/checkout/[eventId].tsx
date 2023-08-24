@@ -4,20 +4,45 @@ import QRCode from "react-qr-code";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { useNostr } from "~/contexts/Nostr";
-import type { Event } from "nostr-tools";
+import { validateEvent, type Event } from "nostr-tools";
+import bolt11 from "bolt11";
+import { useLN } from "~/contexts/LN";
 
 export default function Home() {
   const { invoice, total, totalSats } = useMenu();
-
   const { subscribeZap } = useNostr();
+  const { recipientPubkey } = useLN();
 
   const {
     query: { eventId },
   } = useRouter();
 
   const onZap = (event: Event) => {
-    console.info("Zappeada!!");
-    console.dir(event);
+    if (event.pubkey !== recipientPubkey) {
+      throw new Error("Invalid Recipient Pubkey");
+    }
+
+    if (!validateEvent(event)) {
+      throw new Error("Invalid event");
+    }
+
+    const paidInvoice = event.tags.find((tag) => tag[0] === "bolt11")?.[1];
+    const decodedPaidInvoice = bolt11.decode(paidInvoice!);
+    const decodedInvoice = bolt11.decode(invoice!);
+
+    if (invoice !== paidInvoice) {
+      console.dir(invoice);
+      console.dir(paidInvoice);
+      alert("Invoices don't match!");
+      return;
+    }
+    console.info("invoice: ");
+    console.dir(decodedInvoice);
+
+    console.info("paidInvoice: ");
+    console.dir(decodedPaidInvoice);
+
+    alert("Amount paid:" + decodedPaidInvoice.millisatoshis);
   };
 
   useEffect(() => {
