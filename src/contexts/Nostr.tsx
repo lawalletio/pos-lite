@@ -17,10 +17,11 @@ import { useLN } from "./LN";
 
 // Interfaces
 export interface INostrContext {
+  localPublicKey?: string;
+  localPrivateKey?: string;
+  relays?: string[];
   generateZapEvent?: (amountMillisats: number, postEventId?: string) => Event;
   subscribeZap?: (eventId: string, cb: (_event: Event) => void) => Sub;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  generateOrderEvent?: (content: any) => Event;
   publish?: (_event: Event) => Promise<void>;
 }
 
@@ -74,34 +75,6 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
     [destination, recipientPubkey]
   );
 
-  const generateOrderEvent = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (content: any): Event => {
-      const unsignedEvent: UnsignedEvent = {
-        kind: 1,
-        content: JSON.stringify(content),
-        pubkey: LOCAL_PUBLIC_KEY,
-        created_at: Math.round(Date.now() / 1000),
-        tags: [
-          ["relays", ...relays],
-          ["p", LOCAL_PUBLIC_KEY],
-        ] as string[][],
-      };
-
-      const event: Event = {
-        id: getEventHash(unsignedEvent),
-        sig: getSignature(unsignedEvent, LOCAL_PRIVATE_KEY),
-        ...unsignedEvent,
-      };
-
-      console.info("order: ");
-      console.dir(event);
-
-      return event;
-    },
-    []
-  );
-
   const subscribeZap = (eventId: string, cb: (_event: Event) => void) => {
     console.info(`Listening for zap (${eventId})...`);
     const sub = relayPool.sub([
@@ -135,7 +108,14 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
 
   return (
     <NostrContext.Provider
-      value={{ generateZapEvent, subscribeZap, generateOrderEvent, publish }}
+      value={{
+        localPublicKey: LOCAL_PUBLIC_KEY,
+        localPrivateKey: LOCAL_PRIVATE_KEY,
+        relays,
+        generateZapEvent,
+        subscribeZap,
+        publish,
+      }}
     >
       {children}
     </NostrContext.Provider>

@@ -16,6 +16,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { IMenuItem } from "~/types/menu";
 import { useLN } from "./LN";
 import { useNostr } from "./Nostr";
+import { useOrder } from "./Order";
 
 // Interface
 export interface IMenuContext {
@@ -48,7 +49,8 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [invoice, setInvoice] = useState<string>();
 
   const { callbackUrl, destination } = useLN();
-  const { generateZapEvent, generateOrderEvent, publish } = useNostr();
+  const { generateZapEvent, publish } = useNostr();
+  const { generateOrderEvent } = useOrder();
 
   // Checkout function
   const checkOut = useCallback(async (): Promise<{
