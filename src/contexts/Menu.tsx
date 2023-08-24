@@ -48,7 +48,7 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [invoice, setInvoice] = useState<string>();
 
   const { callbackUrl, destination } = useLN();
-  const { generateZapEvent, generateOrderEvent } = useNostr();
+  const { generateZapEvent, generateOrderEvent, publish } = useNostr();
 
   // Checkout function
   const checkOut = useCallback(async (): Promise<{
@@ -58,6 +58,7 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
     const amountMillisats = totalSats * 1000;
 
     const order = generateOrderEvent!(menuItems);
+    await publish!(order);
 
     const zapEvent = generateZapEvent!(amountMillisats, order.id);
     const encodedZapEvent = encodeURI(JSON.stringify(zapEvent));
@@ -83,7 +84,7 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   useEffect(() => {
     const _total = calcTotal(menuItems);
     setTotal(_total);
-    setTotalSats(_total * SAT_ARS_RATE);
+    setTotalSats(Math.round(_total / SAT_ARS_RATE));
   }, [menuItems]);
 
   return (

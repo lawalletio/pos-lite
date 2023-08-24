@@ -21,6 +21,7 @@ export interface INostrContext {
   subscribeZap?: (eventId: string, cb: (_event: Event) => void) => Sub;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   generateOrderEvent?: (content: any) => Event;
+  publish?: (_event: Event) => Promise<void>;
 }
 
 // Context
@@ -116,6 +117,10 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
     return sub;
   };
 
+  const publish = async (event: Event) => {
+    return await relayPool.publish(event);
+  };
+
   useEffect(() => {
     console.info("Connecting....");
     void relayPool.connect().then(() => {
@@ -130,7 +135,7 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
 
   return (
     <NostrContext.Provider
-      value={{ generateZapEvent, subscribeZap, generateOrderEvent }}
+      value={{ generateZapEvent, subscribeZap, generateOrderEvent, publish }}
     >
       {children}
     </NostrContext.Provider>
