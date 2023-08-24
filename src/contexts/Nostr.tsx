@@ -1,18 +1,11 @@
 // React
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect } from "react";
 
 // Types
 import type { Event, Sub, UnsignedEvent } from "nostr-tools";
 
 // Utils
 import {
-  generatePrivateKey,
   getEventHash,
   getPublicKey,
   getSignature,
@@ -21,12 +14,13 @@ import {
 
 // Hooks
 import { useLN } from "./LN";
-import { IMenuItem } from "~/types/menu";
 
 // Interfaces
 export interface INostrContext {
-  generateZapEvent?: (amountMillisats: number) => Event;
+  generateZapEvent?: (amountMillisats: number, postEventId?: string) => Event;
   subscribeZap?: (eventId: string, cb: (_event: Event) => void) => Sub;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  generateOrderEvent?: (content: any) => Event;
 }
 
 // Context
@@ -49,7 +43,7 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
   const { recipientPubkey, destination } = useLN();
 
   const generateZapEvent = useCallback(
-    (amountMillisats: number): Event => {
+    (amountMillisats: number, postEventId?: string): Event => {
       const unsignedEvent: UnsignedEvent = {
         kind: 9734,
         content: "",
@@ -62,6 +56,8 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
           ["p", recipientPubkey],
         ] as string[][],
       };
+
+      postEventId && unsignedEvent.tags.push(["e", postEventId]);
 
       const event: Event = {
         id: getEventHash(unsignedEvent),
@@ -111,7 +107,7 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
       {
         kinds: [9735],
         authors: [recipientPubkey!],
-        // "#e": [eventId],
+        "#e": [eventId],
       },
     ]);
 
@@ -133,7 +129,9 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
   }, []);
 
   return (
-    <NostrContext.Provider value={{ generateZapEvent, subscribeZap }}>
+    <NostrContext.Provider
+      value={{ generateZapEvent, subscribeZap, generateOrderEvent }}
+    >
       {children}
     </NostrContext.Provider>
   );

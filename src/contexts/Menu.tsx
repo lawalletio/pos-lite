@@ -9,7 +9,6 @@ import {
 
 // Utils
 import { fetchMenuItems, calcTotal } from "~/lib/utils";
-import { generatePrivateKey, getPublicKey } from "nostr-tools";
 import axios from "axios";
 
 // Types
@@ -49,7 +48,7 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [invoice, setInvoice] = useState<string>();
 
   const { callbackUrl, destination } = useLN();
-  const { generateZapEvent } = useNostr();
+  const { generateZapEvent, generateOrderEvent } = useNostr();
 
   // Checkout function
   const checkOut = useCallback(async (): Promise<{
@@ -57,19 +56,21 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
     eventId: string;
   }> => {
     const amountMillisats = totalSats * 1000;
-    const event = generateZapEvent!(amountMillisats);
-    const encodedEvent = encodeURI(JSON.stringify(event));
 
-    // fetch json using axios
+    const order = generateOrderEvent!(menuItems);
+
+    const zapEvent = generateZapEvent!(amountMillisats, order.id);
+    const encodedZapEvent = encodeURI(JSON.stringify(zapEvent));
+
     const response = await axios.get(
-      `${callbackUrl}?amount=${amountMillisats}&nostr=${encodedEvent}&lnurl=${destination}`
+      `${callbackUrl}?amount=${amountMillisats}&nostr=${encodedZapEvent}&lnurl=${destination}`
     );
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const invoice = response.data.pr as string;
     setInvoice(invoice);
 
-    return { invoice, eventId: event.id };
+    return { invoice, eventId: order.id };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callbackUrl, destination, totalSats]);
 
