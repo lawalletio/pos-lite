@@ -22,6 +22,7 @@ export interface INostrContext {
   relays?: string[];
   generateZapEvent?: (amountMillisats: number, postEventId?: string) => Event;
   subscribeZap?: (eventId: string, cb: (_event: Event) => void) => Sub;
+  getEvent?: (eventId: string) => Promise<Event | null>;
   publish?: (_event: Event) => Promise<void>;
 }
 
@@ -90,6 +91,12 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
     return sub;
   };
 
+  const getEvent = async (eventId: string): Promise<Event | null> => {
+    return relayPool.get({
+      ids: [eventId],
+    });
+  };
+
   const publish = async (event: Event) => {
     return await relayPool.publish(event);
   };
@@ -114,6 +121,7 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
         relays,
         generateZapEvent,
         subscribeZap,
+        getEvent,
         publish,
       }}
     >

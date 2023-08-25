@@ -10,31 +10,52 @@ import { useLN } from "~/contexts/LN";
 import { useOrder } from "~/contexts/Order";
 
 export default function Home() {
-  const { invoice, total, totalSats } = useMenu();
-  const { subscribeZap } = useNostr();
+  const { invoice } = useMenu();
+  const { subscribeZap, getEvent } = useNostr();
   const { recipientPubkey } = useLN();
-  const { orderId } = useOrder();
+  const { orderId, setOrderEvent, amount, fiatAmount } = useOrder();
 
   const {
     query: { orderId: queryOrderId },
   } = useRouter();
 
+  // Fetch order if not already fetched
   useEffect(() => {
-    const sub = subscribeZap!(queryOrderId as string, onZap);
+    if (!queryOrderId) {
+      return;
+    }
+
+    if (queryOrderId === orderId) {
+      console.info("Order already fetched");
+      return;
+    }
+
+    console.info("Fetching order...");
+    void getEvent!(queryOrderId as string).then((event) => {
+      if (!event) {
+        alert("Order not found");
+        return;
+      }
+
+      console.info("Setting new order");
+      setOrderEvent!(event);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryOrderId]);
+
+  // Subscribe for zaps
+  useEffect(() => {
+    if (!orderId) {
+      return;
+    }
+    console.info(`Subscribing for ${orderId}...`);
+    const sub = subscribeZap!(orderId, onZap);
 
     return () => {
       sub.unsub();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
-
-  useEffect(() => {
-    if (!queryOrderId || queryOrderId === orderId) {
-      return;
-    }
-    console.info("orderd", queryOrderId);
-
-    console.info("START");
-  }, [queryOrderId]);
 
   const onZap = (event: Event) => {
     if (event.pubkey !== recipientPubkey) {
@@ -78,8 +99,8 @@ export default function Home() {
           <div className="bg-white p-2">
             <QRCode value={invoice ?? "nothing"} />
           </div>
-          <div className="text-4xl text-white">{totalSats} sats</div>
-          <div className="text-3xl text-white">ARS {total}</div>
+          <div className="text-4xl text-white">{amount} sats</div>
+          <div className="text-3xl text-white">ARS {fiatAmount}</div>
         </div>
       </main>
     </>

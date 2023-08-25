@@ -10,6 +10,7 @@ import {
 // Tools
 import { useNostr } from "./Nostr";
 import {
+  calcTotal,
   generateEventContent,
   parseOrderDescription,
   parseZapInvoice,
@@ -24,19 +25,23 @@ import type { IMenuItem } from "~/types/menu";
 // Interface
 export interface IOrderContext {
   orderId?: string;
-  amount?: number;
-  pendingAmount?: number;
-  fiatAmount?: number;
+  amount: number;
+  pendingAmount: number;
+  fiatAmount: number;
   fiatCurrency?: string;
   items?: IMenuItem[];
   zapEvents: Event[];
   setOrderEvent?: Dispatch<SetStateAction<Event | undefined>>;
   generateOrderEvent?: (content: unknown) => Event;
   addZapEvent?: (event: Event) => void;
+  setItems?: Dispatch<SetStateAction<IMenuItem[]>>;
 }
 
 // Context
 export const OrderContext = createContext<IOrderContext>({
+  amount: 0,
+  pendingAmount: 0,
+  fiatAmount: 0,
   zapEvents: [],
   fiatCurrency: "ARS",
 });
@@ -46,12 +51,14 @@ interface IOrderProviderProps {
   children: React.ReactNode;
 }
 
+const SAT_ARS_RATE = 0.18;
+
 export const OrderProvider = ({ children }: IOrderProviderProps) => {
   const [orderId, setOrderId] = useState<string>();
   const [orderEvent, setOrderEvent] = useState<Event>();
-  const [amount, setAmount] = useState<number>();
-  const [pendingAmount, setPendingAmount] = useState<number>();
-  const [fiatAmount, setFiatAmount] = useState<number>();
+  const [amount, setAmount] = useState<number>(0);
+  const [pendingAmount, setPendingAmount] = useState<number>(0);
+  const [fiatAmount, setFiatAmount] = useState<number>(0);
   const [fiatCurrency, setFiatCurrency] = useState<string>("ARS");
   const [items, setItems] = useState<IMenuItem[]>([]);
   const [zapEvents, setZapEvents] = useState<Event[]>([]);
@@ -62,9 +69,9 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
   useEffect(() => {
     if (!orderEvent) {
       setOrderId(undefined);
-      setAmount(undefined);
-      setPendingAmount(undefined);
-      setFiatAmount(undefined);
+      setAmount(0);
+      setPendingAmount(0);
+      setFiatAmount(0);
       setFiatCurrency("ARS");
       setItems([]);
       return;
@@ -72,6 +79,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
 
     const description = parseOrderDescription(orderEvent);
 
+    console.dir(description);
     setOrderId(orderEvent.id);
     setAmount(description.amount);
     setPendingAmount(description.amount);
@@ -80,12 +88,19 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
     setItems(description.items);
   }, [orderEvent]);
 
+  // Calculate total on menu change
+  useEffect(() => {
+    const _total = calcTotal(items);
+    setFiatAmount(_total);
+    setAmount(Math.round(_total / SAT_ARS_RATE));
+  }, [items]);
+
   const generateOrderEvent = useCallback((): Event => {
     const unsignedEvent: UnsignedEvent = {
       kind: 1,
       content: generateEventContent({
-        amount: amount!,
-        fiatAmount: fiatAmount!,
+        amount: amount,
+        fiatAmount: fiatAmount,
         fiatCurrency,
         items,
       }),
@@ -131,7 +146,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
     if (!invoice.complete) {
       return;
     }
-    setPendingAmount((prev) => prev! - parseInt(invoice.millisatoshis!) / 1000);
+    setPendingAmount((prev) => prev - parseInt(invoice.millisatoshis!) / 1000);
     setZapEvents((prev) => [...prev, event]);
   }, []);
 
@@ -148,6 +163,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
         generateOrderEvent,
         setOrderEvent,
         addZapEvent,
+        setItems,
       }}
     >
       {children}

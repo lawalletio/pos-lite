@@ -2,9 +2,11 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import MenuItem from "~/components/MenuItem";
 import { useMenu } from "~/contexts/Menu";
+import { useOrder } from "~/contexts/Order";
 
 export default function Home() {
-  const { menuItems, total, setMenuItems, checkOut } = useMenu();
+  const { menuItems, setMenuItems, checkOut } = useMenu();
+  const { fiatAmount } = useOrder();
 
   const router = useRouter();
 
@@ -46,13 +48,13 @@ export default function Home() {
               />
             ))}
           </div>
-          {total > 0 ? (
+          {fiatAmount > 0 ? (
             <div className="absolute bottom-5 w-full p-5 text-white">
               <button
                 onClick={() => void nextStep()}
                 className="w-full rounded-xl bg-slate-300/20 p-5"
               >
-                Pagar ARS {total}
+                Pagar ARS {fiatAmount}
               </button>
             </div>
           ) : (

@@ -8,7 +8,7 @@ import {
 } from "react";
 
 // Utils
-import { fetchMenuItems, calcTotal } from "~/lib/utils";
+import { fetchMenuItems } from "~/lib/utils";
 import axios from "axios";
 
 // Types
@@ -20,8 +20,6 @@ import { useOrder } from "./Order";
 
 // Interface
 export interface IMenuContext {
-  total: number;
-  totalSats: number;
   menuItems: IMenuItem[];
   invoice?: string;
   setMenuItems?: Dispatch<SetStateAction<IMenuItem[]>>;
@@ -30,8 +28,6 @@ export interface IMenuContext {
 
 // Context
 export const MenuContext = createContext<IMenuContext>({
-  total: 0,
-  totalSats: 0,
   menuItems: [],
 });
 
@@ -40,24 +36,20 @@ interface IMenuProviderProps {
   children: React.ReactNode;
 }
 
-const SAT_ARS_RATE = 0.18;
-
 export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [menuItems, setMenuItems] = useState<IMenuItem[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [totalSats, setTotalSats] = useState<number>(0);
   const [invoice, setInvoice] = useState<string>();
 
   const { callbackUrl, destination } = useLN();
   const { generateZapEvent, publish } = useNostr();
-  const { generateOrderEvent } = useOrder();
+  const { generateOrderEvent, setItems, amount } = useOrder();
 
   // Checkout function
   const checkOut = useCallback(async (): Promise<{
     invoice: string;
     eventId: string;
   }> => {
-    const amountMillisats = totalSats * 1000;
+    const amountMillisats = amount * 1000;
 
     const order = generateOrderEvent!(menuItems);
     await publish!(order);
@@ -75,23 +67,22 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
 
     return { invoice, eventId: order.id };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callbackUrl, destination, totalSats]);
+  }, [callbackUrl, destination, amount]);
 
   // Fetch menu items
   useEffect(() => {
     setMenuItems(fetchMenuItems());
   }, []);
 
-  // Calculate total on menu change
+  // Update order items
   useEffect(() => {
-    const _total = calcTotal(menuItems);
-    setTotal(_total);
-    setTotalSats(Math.round(_total / SAT_ARS_RATE));
+    setItems!(menuItems.filter((item) => item.quantity > 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuItems]);
 
   return (
     <MenuContext.Provider
-      value={{ total, totalSats, invoice, menuItems, setMenuItems, checkOut }}
+      value={{ invoice, menuItems, setMenuItems, checkOut }}
     >
       {children}
     </MenuContext.Provider>
