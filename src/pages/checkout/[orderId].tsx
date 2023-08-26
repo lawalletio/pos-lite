@@ -113,7 +113,7 @@ export default function Home() {
             <div>Cargando...</div>
           ) : (
             <div>
-              <div className="bg-white px-24 py-12 text-5xl text-black">
+              <div className="bg-white px-4 py-12 text-5xl text-black md:px-24">
                 {pendingAmount <= 0 ? (
                   <div>Pagado</div>
                 ) : (
@@ -156,6 +156,7 @@ export default function Home() {
                           {parseInt(invoice.millisatoshis!) / 1000} sats
                         </div>
                         <div>{invoice.timestamp}</div>
+                        <div>{previousEvent.content}</div>
                       </div>
                     );
                   })}
