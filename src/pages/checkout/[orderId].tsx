@@ -136,31 +136,35 @@ export default function Home() {
               )}
 
               <div>
-                <h2>Pagos</h2>
+                {zapEvents.length < 1 ? (
+                  <div>Sin pagos</div>
+                ) : (
+                  <h2>Zaps recibidos</h2>
+                )}
                 <div>
                   {zapEvents.map((event, k) => {
                     const invoice = parseZapInvoice(event);
                     const previousEvent = JSON.parse(
                       event.tags.find((tag) => tag[0] === "description")![1]!
                     ) as Event;
-
-                    console.info("event: ");
-                    console.dir(event);
-                    console.info("previousEvent: ");
-                    console.dir(previousEvent);
-                    console.info("invoice: ");
-                    console.dir(invoice);
                     return (
-                      <div key={k}>
+                      <div key={k} className="border-2 border-solid p-4">
+                        <div>{previousEvent.pubkey}</div>
                         <div>
                           {parseInt(invoice.millisatoshis!) / 1000} sats
                         </div>
-                        <div>{invoice.timestamp}</div>
+                        <div>Timestamp: {invoice.timestamp}</div>
                         <div>{previousEvent.content}</div>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+
+              <div>
+                <a target="_blank" href={`https://primal.net/e/${orderId}`}>
+                  Ver post
+                </a>
               </div>
             </div>
           )}
