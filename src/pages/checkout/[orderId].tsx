@@ -9,6 +9,8 @@ import bolt11 from "bolt11";
 import { useLN } from "~/contexts/LN";
 import { useOrder } from "~/contexts/Order";
 import { parseZapInvoice } from "~/lib/utils";
+import { Progress } from "react-sweet-progress";
+import "react-sweet-progress/lib/style.css";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
@@ -23,6 +25,7 @@ export default function Home() {
     amount,
     fiatAmount,
     pendingAmount,
+    totalPaid,
   } = useOrder();
 
   const {
@@ -135,6 +138,13 @@ export default function Home() {
                 ""
               )}
 
+              <div className="flex w-full flex-col justify-center">
+                <Progress
+                  type="circle"
+                  percent={((totalPaid / amount) * 100).toFixed(2)}
+                  status={totalPaid >= amount ? "success" : "active"}
+                />
+              </div>
               <div>
                 {zapEvents.length < 1 ? (
                   <div>Sin pagos</div>

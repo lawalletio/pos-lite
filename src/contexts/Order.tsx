@@ -27,6 +27,7 @@ export interface IOrderContext {
   orderId?: string;
   amount: number;
   pendingAmount: number;
+  totalPaid: number;
   fiatAmount: number;
   fiatCurrency?: string;
   items?: IMenuItem[];
@@ -41,6 +42,7 @@ export interface IOrderContext {
 export const OrderContext = createContext<IOrderContext>({
   amount: 0,
   pendingAmount: 0,
+  totalPaid: 0,
   fiatAmount: 0,
   zapEvents: [],
   fiatCurrency: "ARS",
@@ -58,6 +60,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
   const [orderEvent, setOrderEvent] = useState<Event>();
   const [amount, setAmount] = useState<number>(0);
   const [pendingAmount, setPendingAmount] = useState<number>(0);
+  const [totalPaid, setTotalPaid] = useState<number>(0);
   const [fiatAmount, setFiatAmount] = useState<number>(0);
   const [fiatCurrency, setFiatCurrency] = useState<string>("ARS");
   const [items, setItems] = useState<IMenuItem[]>([]);
@@ -146,7 +149,9 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
     if (!invoice.complete) {
       return;
     }
-    setPendingAmount((prev) => prev - parseInt(invoice.millisatoshis!) / 1000);
+    const amountPaid = parseInt(invoice.millisatoshis!) / 1000;
+    setPendingAmount((prev) => prev - amountPaid);
+    setTotalPaid((total) => total + amountPaid);
     setZapEvents((prev) => [...prev, event]);
   }, []);
 
@@ -160,6 +165,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
         fiatCurrency,
         items,
         pendingAmount,
+        totalPaid,
         generateOrderEvent,
         setOrderEvent,
         addZapEvent,
