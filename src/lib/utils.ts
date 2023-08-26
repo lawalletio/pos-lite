@@ -30,7 +30,7 @@ export const generateEventContent = ({
   items,
 }: IOrderEventContent) => {
   return (
-    "New order: \n<br />" +
+    "New order: \n" +
     JSON.stringify({
       items,
       fiatAmount,

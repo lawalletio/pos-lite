@@ -1,19 +1,29 @@
 import Head from "next/head";
 import { useMenu } from "~/contexts/Menu";
 import QRCode from "react-qr-code";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useNostr } from "~/contexts/Nostr";
 import { validateEvent, type Event } from "nostr-tools";
 import bolt11 from "bolt11";
 import { useLN } from "~/contexts/LN";
 import { useOrder } from "~/contexts/Order";
+import { parseZapInvoice } from "~/lib/utils";
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(true);
   const { invoice } = useMenu();
   const { subscribeZap, getEvent } = useNostr();
   const { recipientPubkey } = useLN();
-  const { orderId, setOrderEvent, amount, fiatAmount } = useOrder();
+  const {
+    orderId,
+    setOrderEvent,
+    addZapEvent,
+    zapEvents,
+    amount,
+    fiatAmount,
+    pendingAmount,
+  } = useOrder();
 
   const {
     query: { orderId: queryOrderId },
@@ -27,6 +37,7 @@ export default function Home() {
 
     if (queryOrderId === orderId) {
       console.info("Order already fetched");
+      setIsLoading(false);
       return;
     }
 
@@ -34,11 +45,13 @@ export default function Home() {
     void getEvent!(queryOrderId as string).then((event) => {
       if (!event) {
         alert("Order not found");
+        setIsLoading(false);
         return;
       }
 
       console.info("Setting new order");
       setOrderEvent!(event);
+      setIsLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryOrderId]);
@@ -73,8 +86,7 @@ export default function Home() {
     if (invoice !== paidInvoice) {
       console.dir(invoice);
       console.dir(paidInvoice);
-      alert("Invoices don't match!");
-      return;
+      console.info("FROM ZAP:");
     }
     console.info("invoice: ");
     console.dir(decodedInvoice);
@@ -82,7 +94,8 @@ export default function Home() {
     console.info("paidInvoice: ");
     console.dir(decodedPaidInvoice);
 
-    alert("Amount paid:" + decodedPaidInvoice.millisatoshis);
+    addZapEvent!(event);
+    console.info("Amount paid:" + decodedPaidInvoice.millisatoshis);
   };
   return (
     <>
@@ -91,16 +104,65 @@ export default function Home() {
         <meta name="description" content="La Crypta POS - Checkout" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="relative flex min-h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c]">
+      <main className="relative flex min-h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
         <div className="container flex flex-col items-center justify-center gap-6 px-4 py-6 ">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-[3rem]">
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-[3rem]">
             La Crypta POS
           </h1>
-          <div className="bg-white p-2">
-            <QRCode value={invoice ?? "nothing"} />
-          </div>
-          <div className="text-4xl text-white">{amount} sats</div>
-          <div className="text-3xl text-white">ARS {fiatAmount}</div>
+          {isLoading ? (
+            <div>Cargando...</div>
+          ) : (
+            <div>
+              <div className="bg-white px-24 py-12 text-5xl text-black">
+                {pendingAmount <= 0 ? (
+                  <div>Pagado</div>
+                ) : (
+                  <QRCode width={"200%"} value={invoice ?? "nothing"} />
+                )}
+              </div>
+              <div className="text-3xl">ARS {fiatAmount}</div>
+              <div className="text-4xl">{amount} sats</div>
+              {pendingAmount > 0 ? (
+                <div className="text-3xl">Pendiente {pendingAmount} sats</div>
+              ) : (
+                ""
+              )}
+              {pendingAmount < 0 ? (
+                <div className="text-3xl text-green-500">
+                  Propina +{-pendingAmount} sats
+                </div>
+              ) : (
+                ""
+              )}
+
+              <div>
+                <h2>Pagos</h2>
+                <div>
+                  {zapEvents.map((event, k) => {
+                    const invoice = parseZapInvoice(event);
+                    const previousEvent = JSON.parse(
+                      event.tags.find((tag) => tag[0] === "description")![1]!
+                    ) as Event;
+
+                    console.info("event: ");
+                    console.dir(event);
+                    console.info("previousEvent: ");
+                    console.dir(previousEvent);
+                    console.info("invoice: ");
+                    console.dir(invoice);
+                    return (
+                      <div key={k}>
+                        <div>
+                          {parseInt(invoice.millisatoshis!) / 1000} sats
+                        </div>
+                        <div>{invoice.timestamp}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </>

@@ -83,6 +83,7 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
         kinds: [9735],
         authors: [recipientPubkey!],
         "#e": [eventId],
+        since: 0,
       },
     ]);
 
