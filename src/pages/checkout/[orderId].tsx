@@ -4,13 +4,14 @@ import QRCode from "react-qr-code";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useNostr } from "~/contexts/Nostr";
-import { validateEvent, type Event } from "nostr-tools";
+import { type Event, validateEvent } from "nostr-tools";
 import bolt11 from "bolt11";
 import { useLN } from "~/contexts/LN";
 import { useOrder } from "~/contexts/Order";
 import { parseZapInvoice } from "~/lib/utils";
 import { Progress } from "react-sweet-progress";
 import "react-sweet-progress/lib/style.css";
+import type { NDKEvent } from "@nostr-dev-kit/ndk";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +54,7 @@ export default function Home() {
       }
 
       console.info("Setting new order");
-      setOrderEvent!(event);
+      setOrderEvent!(event as Event);
       setIsLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,19 +62,22 @@ export default function Home() {
 
   // Subscribe for zaps
   useEffect(() => {
-    if (!orderId) {
+    if (!orderId || !recipientPubkey) {
       return;
     }
     console.info(`Subscribing for ${orderId}...`);
-    const sub = subscribeZap!(orderId, onZap);
+    const sub = subscribeZap!(orderId);
+
+    sub.addListener("event", onZap);
 
     return () => {
-      sub.unsub();
+      sub.removeAllListeners();
+      sub.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId]);
+  }, [orderId, recipientPubkey]);
 
-  const onZap = (event: Event) => {
+  const onZap = (event: NDKEvent) => {
     if (event.pubkey !== recipientPubkey) {
       throw new Error("Invalid Recipient Pubkey");
     }
@@ -84,21 +88,13 @@ export default function Home() {
 
     const paidInvoice = event.tags.find((tag) => tag[0] === "bolt11")?.[1];
     const decodedPaidInvoice = bolt11.decode(paidInvoice!);
-    const decodedInvoice = bolt11.decode(invoice!);
 
     if (invoice !== paidInvoice) {
-      console.dir(invoice);
-      console.dir(paidInvoice);
-      console.info("FROM ZAP:");
+      console.info("Zap received");
     }
-    console.info("invoice: ");
-    console.dir(decodedInvoice);
 
-    console.info("paidInvoice: ");
-    console.dir(decodedPaidInvoice);
-
-    addZapEvent!(event);
-    console.info("Amount paid:" + decodedPaidInvoice.millisatoshis);
+    addZapEvent!(event as Event);
+    console.info("Amount paid : " + decodedPaidInvoice.millisatoshis);
   };
   return (
     <>
@@ -158,7 +154,7 @@ export default function Home() {
                     const invoice = parseZapInvoice(event);
                     const previousEvent = JSON.parse(
                       event.tags.find((tag) => tag[0] === "description")![1]!
-                    ) as Event;
+                    ) as NDKEvent;
                     return (
                       <div key={k} className="border-2 border-solid p-4">
                         <div>{previousEvent.pubkey}</div>

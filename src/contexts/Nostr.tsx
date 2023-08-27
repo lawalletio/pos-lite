@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect } from "react";
 
 // Types
-import type { Event, Sub, UnsignedEvent } from "nostr-tools";
+import type { Event, UnsignedEvent } from "nostr-tools";
 
 // Utils
 import {
@@ -20,10 +20,13 @@ export interface INostrContext {
   localPublicKey?: string;
   localPrivateKey?: string;
   relays?: string[];
-  generateZapEvent?: (amountMillisats: number, postEventId?: string) => Event;
-  subscribeZap?: (eventId: string, cb: (_event: Event) => void) => Sub;
-  getEvent?: (eventId: string) => Promise<Event | null>;
-  publish?: (_event: Event) => Promise<void>;
+  generateZapEvent?: (
+    amountMillisats: number,
+    postEventId?: string
+  ) => NDKEvent;
+  subscribeZap?: (eventId: string) => NDKSubscription;
+  getEvent?: (eventId: string) => Promise<NDKEvent | null>;
+  publish?: (_event: Event) => Promise<Set<NDKRelay>>;
 }
 
 // Context
@@ -42,11 +45,21 @@ const NOSTR_RELAY = process.env.NEXT_PUBLIC_NOSTR_RELAY!;
 const relays = [NOSTR_RELAY];
 const relayPool = relayInit(NOSTR_RELAY);
 
+import NDK, {
+  NDKEvent,
+  type NDKRelay,
+  type NDKSubscription,
+} from "@nostr-dev-kit/ndk";
+
+const ndk = new NDK({
+  explicitRelayUrls: relays,
+});
+
 export const NostrProvider = ({ children }: INostrProviderProps) => {
   const { recipientPubkey, destination } = useLN();
 
   const generateZapEvent = useCallback(
-    (amountMillisats: number, postEventId?: string): Event => {
+    (amountMillisats: number, postEventId?: string): NDKEvent => {
       const unsignedEvent: UnsignedEvent = {
         kind: 9734,
         content: "",
@@ -62,11 +75,11 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
 
       postEventId && unsignedEvent.tags.push(["e", postEventId]);
 
-      const event: Event = {
+      const event = new NDKEvent(ndk, {
         id: getEventHash(unsignedEvent),
         sig: getSignature(unsignedEvent, LOCAL_PRIVATE_KEY),
         ...unsignedEvent,
-      };
+      });
 
       console.info("zap event: ");
       console.dir(event);
@@ -76,35 +89,40 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
     [destination, recipientPubkey]
   );
 
-  const subscribeZap = (eventId: string, cb: (_event: Event) => void) => {
+  const subscribeZap = (eventId: string): NDKSubscription => {
     console.info(`Listening for zap (${eventId})...`);
-    const sub = relayPool.sub([
+    const sub = ndk.subscribe(
+      [
+        {
+          kinds: [9735],
+          authors: [recipientPubkey!],
+          "#e": [eventId],
+          since: 1693157776,
+        },
+      ],
       {
-        kinds: [9735],
-        authors: [recipientPubkey!],
-        "#e": [eventId],
-        since: 0,
-      },
-    ]);
-
-    sub.on("event", cb);
-
+        closeOnEose: false,
+        groupableDelay: 0,
+      }
+    );
     return sub;
   };
 
-  const getEvent = async (eventId: string): Promise<Event | null> => {
-    return relayPool.get({
+  const getEvent = async (eventId: string): Promise<NDKEvent | null> => {
+    return ndk.fetchEvent({
       ids: [eventId],
     });
   };
 
-  const publish = async (event: Event) => {
-    return await relayPool.publish(event);
+  const publish = async (event: Event): Promise<Set<NDKRelay>> => {
+    const ndkEvent = new NDKEvent(ndk, event);
+    return ndkEvent.publish();
+    // return await relayPool.publish(event);
   };
 
   useEffect(() => {
     console.info("Connecting....");
-    void relayPool.connect().then(() => {
+    void ndk.connect().then(() => {
       console.info("Connected");
     });
 

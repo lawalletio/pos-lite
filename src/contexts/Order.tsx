@@ -82,7 +82,6 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
 
     const description = parseOrderDescription(orderEvent);
 
-    console.dir(description);
     setOrderId(orderEvent.id);
     setAmount(description.amount);
     setPendingAmount(description.amount);
@@ -147,6 +146,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
   const addZapEvent = useCallback((event: Event) => {
     const invoice = parseZapInvoice(event);
     if (!invoice.complete) {
+      console.info("Incomplete invoice");
       return;
     }
     const amountPaid = parseInt(invoice.millisatoshis!) / 1000;

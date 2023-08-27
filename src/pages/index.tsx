@@ -18,10 +18,7 @@ export default function Home() {
   };
 
   const nextStep = async () => {
-    const { invoice, eventId } = await checkOut!();
-
-    console.dir(invoice);
-    // alert(invoice.invoice);
+    const { eventId } = await checkOut!();
     void router.push(`/checkout/${eventId}`);
   };
 
