@@ -120,7 +120,9 @@ export default function Home() {
                 {pendingAmount <= 0 ? (
                   <div>Pagado</div>
                 ) : (
-                  <QRCode width={"200%"} value={invoice ?? "nothing"} />
+                  <a href={`lightning://${invoice}`}>
+                    <QRCode width={"200%"} value={invoice ?? "nothing"} />
+                  </a>
                 )}
               </div>
               <div className="text-3xl">ARS {fiatAmount}</div>
