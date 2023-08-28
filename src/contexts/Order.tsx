@@ -21,6 +21,7 @@ import { getEventHash, getSignature } from "nostr-tools";
 import type { Dispatch, SetStateAction } from "react";
 import type { Event, UnsignedEvent } from "nostr-tools";
 import type { IMenuItem } from "~/types/menu";
+import { useLN } from "./LN";
 
 // Interface
 export interface IOrderContext {
@@ -32,10 +33,16 @@ export interface IOrderContext {
   fiatCurrency?: string;
   items?: IMenuItem[];
   zapEvents: Event[];
+  currentInvoice?: string;
+  setCurrentInvoice?: Dispatch<SetStateAction<string | undefined>>;
   setOrderEvent?: Dispatch<SetStateAction<Event | undefined>>;
   generateOrderEvent?: (content: unknown) => Event;
   addZapEvent?: (event: Event) => void;
   setItems?: Dispatch<SetStateAction<IMenuItem[]>>;
+  requestZapInvoice?: (
+    amountMillisats: number,
+    orderEventId: string
+  ) => Promise<string>;
 }
 
 // Context
@@ -59,6 +66,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
   const [orderId, setOrderId] = useState<string>();
   const [orderEvent, setOrderEvent] = useState<Event>();
   const [amount, setAmount] = useState<number>(0);
+  const [currentInvoice, setCurrentInvoice] = useState<string>();
   const [pendingAmount, setPendingAmount] = useState<number>(0);
   const [totalPaid, setTotalPaid] = useState<number>(0);
   const [fiatAmount, setFiatAmount] = useState<number>(0);
@@ -66,7 +74,9 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
   const [items, setItems] = useState<IMenuItem[]>([]);
   const [zapEvents, setZapEvents] = useState<Event[]>([]);
 
-  const { relays, localPublicKey, localPrivateKey } = useNostr();
+  const { relays, localPublicKey, localPrivateKey, generateZapEvent } =
+    useNostr();
+  const { requestInvoice } = useLN();
 
   // on orderEvent change
   useEffect(() => {
@@ -155,6 +165,22 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
     setZapEvents((prev) => [...prev, event]);
   }, []);
 
+  const requestZapInvoice = useCallback(
+    async (amountMillisats: number, orderEventId: string): Promise<string> => {
+      // Generate ZapRequestEvent
+      const zapEvent = generateZapEvent!(amountMillisats, orderEventId);
+
+      // Request new invoice
+      const invoice = await requestInvoice!({
+        amountMillisats,
+        zapEvent: zapEvent as Event,
+      });
+
+      return invoice;
+    },
+    [generateZapEvent, requestInvoice]
+  );
+
   return (
     <OrderContext.Provider
       value={{
@@ -166,6 +192,9 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
         items,
         pendingAmount,
         totalPaid,
+        currentInvoice,
+        setCurrentInvoice,
+        requestZapInvoice,
         generateOrderEvent,
         setOrderEvent,
         addZapEvent,

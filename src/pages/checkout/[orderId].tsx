@@ -1,7 +1,6 @@
 import Head from "next/head";
-import { useMenu } from "~/contexts/Menu";
 import QRCode from "react-qr-code";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useNostr } from "~/contexts/Nostr";
 import { type Event, validateEvent } from "nostr-tools";
@@ -14,12 +13,16 @@ import "react-sweet-progress/lib/style.css";
 import type { NDKEvent } from "@nostr-dev-kit/ndk";
 
 export default function Home() {
-  const [isLoading, setIsLoading] = useState(true);
-  const { invoice } = useMenu();
-  const { subscribeZap, getEvent } = useNostr();
+  const {
+    query: { orderId: queryOrderId },
+  } = useRouter();
   const { recipientPubkey } = useLN();
+  const { subscribeZap, getEvent } = useNostr();
   const {
     orderId,
+    currentInvoice: invoice,
+    setCurrentInvoice,
+    requestZapInvoice,
     setOrderEvent,
     addZapEvent,
     zapEvents,
@@ -29,9 +32,8 @@ export default function Home() {
     totalPaid,
   } = useOrder();
 
-  const {
-    query: { orderId: queryOrderId },
-  } = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasEOSE, setHasEOSE] = useState(true);
 
   // Fetch order if not already fetched
   useEffect(() => {
@@ -70,6 +72,13 @@ export default function Home() {
 
     sub.addListener("event", onZap);
 
+    sub.on("eose", () => {
+      setHasEOSE(true);
+      setTimeout(() => {
+        void refreshInvoice();
+      }, 100);
+    });
+
     return () => {
       sub.removeAllListeners();
       sub.stop();
@@ -77,6 +86,18 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, recipientPubkey]);
 
+  // When pending amount changes
+  useEffect(() => {
+    if (!hasEOSE) {
+      return;
+    }
+    if (pendingAmount > 0) {
+      void refreshInvoice();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasEOSE, pendingAmount]);
+
+  // Handle new incoming zap
   const onZap = (event: NDKEvent) => {
     if (event.pubkey !== recipientPubkey) {
       throw new Error("Invalid Recipient Pubkey");
@@ -96,6 +117,17 @@ export default function Home() {
     addZapEvent!(event as Event);
     console.info("Amount paid : " + decodedPaidInvoice.millisatoshis);
   };
+
+  const refreshInvoice = useCallback(async () => {
+    console.info("pendingAmount", pendingAmount);
+    if (!pendingAmount || !orderId) {
+      return;
+    }
+
+    const invoice = await requestZapInvoice!(pendingAmount * 1000, orderId);
+    setCurrentInvoice!(invoice);
+  }, [orderId, pendingAmount, requestZapInvoice, setCurrentInvoice]);
+
   return (
     <>
       <Head>

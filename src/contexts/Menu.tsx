@@ -9,7 +9,6 @@ import {
 
 // Utils
 import { fetchMenuItems } from "~/lib/utils";
-import axios from "axios";
 
 // Types
 import type { Dispatch, SetStateAction } from "react";
@@ -21,9 +20,8 @@ import { useOrder } from "./Order";
 // Interface
 export interface IMenuContext {
   menuItems: IMenuItem[];
-  invoice?: string;
   setMenuItems?: Dispatch<SetStateAction<IMenuItem[]>>;
-  checkOut?: () => Promise<{ invoice: string; eventId: string }>;
+  checkOut?: () => Promise<{ eventId: string }>;
 }
 
 // Context
@@ -38,34 +36,20 @@ interface IMenuProviderProps {
 
 export const MenuProvider = ({ children }: IMenuProviderProps) => {
   const [menuItems, setMenuItems] = useState<IMenuItem[]>([]);
-  const [invoice, setInvoice] = useState<string>();
 
   const { callbackUrl, destination } = useLN();
-  const { generateZapEvent, publish } = useNostr();
+  const { publish } = useNostr();
   const { generateOrderEvent, setItems, amount } = useOrder();
 
   // Checkout function
   const checkOut = useCallback(async (): Promise<{
-    invoice: string;
     eventId: string;
   }> => {
-    const amountMillisats = amount * 1000;
-
+    // Order Nostr event
     const order = generateOrderEvent!(menuItems);
     await publish!(order);
 
-    const zapEvent = generateZapEvent!(amountMillisats, order.id);
-    const encodedZapEvent = encodeURI(JSON.stringify(zapEvent));
-
-    const response = await axios.get(
-      `${callbackUrl}?amount=${amountMillisats}&nostr=${encodedZapEvent}&lnurl=${destination}`
-    );
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const invoice = response.data.pr as string;
-    setInvoice(invoice);
-
-    return { invoice, eventId: order.id };
+    return { eventId: order.id };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callbackUrl, destination, amount]);
 
@@ -81,9 +65,7 @@ export const MenuProvider = ({ children }: IMenuProviderProps) => {
   }, [menuItems]);
 
   return (
-    <MenuContext.Provider
-      value={{ invoice, menuItems, setMenuItems, checkOut }}
-    >
+    <MenuContext.Provider value={{ menuItems, setMenuItems, checkOut }}>
       {children}
     </MenuContext.Provider>
   );
