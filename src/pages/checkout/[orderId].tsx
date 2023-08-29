@@ -20,8 +20,10 @@ import Zap from "~/components/Zap";
 import QRCode from "react-qr-code";
 import { Progress } from "react-sweet-progress";
 import "react-sweet-progress/lib/style.css";
+import QRModal from "~/components/QRModal";
 
 export default function Home() {
+  // Hooks
   const {
     query: { orderId: queryOrderId },
   } = useRouter();
@@ -41,8 +43,12 @@ export default function Home() {
     totalPaid,
   } = useOrder();
 
+  // State Hooks
   const [isLoading, setIsLoading] = useState(true);
-  const [hasEOSE, setHasEOSE] = useState(true);
+  const [invoiceAutoRefreshEnabled, setInvoiceAutoRefreshEnabled] =
+    useState(false);
+  const [, setAutoRefreshTimeout] = useState<NodeJS.Timeout>();
+  const [isOpen, setIsOpen] = useState(false);
 
   // Fetch order if not already fetched
   useEffect(() => {
@@ -82,10 +88,8 @@ export default function Home() {
     sub.addListener("event", onZap);
 
     sub.on("eose", () => {
-      setHasEOSE(true);
-      setTimeout(() => {
-        void refreshInvoice();
-      }, 100);
+      setInvoiceAutoRefreshEnabled(true);
+      runAutoRefreshTimeout();
     });
 
     return () => {
@@ -94,17 +98,6 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, recipientPubkey]);
-
-  // When pending amount changes
-  useEffect(() => {
-    if (!hasEOSE) {
-      return;
-    }
-    if (pendingAmount > 0) {
-      void refreshInvoice();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasEOSE, pendingAmount]);
 
   // Handle new incoming zap
   const onZap = (event: NDKEvent) => {
@@ -136,6 +129,29 @@ export default function Home() {
     const invoice = await requestZapInvoice!(pendingAmount * 1000, orderId);
     setCurrentInvoice!(invoice);
   }, [orderId, pendingAmount, requestZapInvoice, setCurrentInvoice]);
+
+  const runAutoRefreshTimeout = useCallback(() => {
+    console.info("RUNNING!!");
+    setAutoRefreshTimeout((currentTimeout) => {
+      clearTimeout(currentTimeout);
+      return setTimeout(() => {
+        console.info("Refresh");
+        void refreshInvoice();
+      }, 200);
+    });
+  }, [refreshInvoice]);
+
+  useEffect(() => {
+    if (pendingAmount <= 0) {
+      return;
+    }
+    if (invoiceAutoRefreshEnabled) {
+      console.info("Renew auto refresh timeout");
+      runAutoRefreshTimeout();
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceAutoRefreshEnabled, pendingAmount]);
 
   return (
     <>
@@ -198,13 +214,21 @@ export default function Home() {
               </div>
 
               <div>
-                <a target="_blank" href={`https://primal.net/e/${orderId}`}>
-                  Ver post
-                </a>
+                <button onClick={() => setIsOpen(true)}>VER POST</button>
               </div>
             </div>
           )}
         </div>
+        <QRModal
+          data={
+            orderId ? `https://primal.net/e/${orderId}` : ""
+            // orderId ? `https://snort.social/e/${nip19.noteEncode(orderId)}` : ""
+          }
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          label="Escaneá para zappear desde Coracle"
+          title="Post de Nostr"
+        />
       </main>
     </>
   );

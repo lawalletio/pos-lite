@@ -35,7 +35,7 @@ const LOCAL_PUBLIC_KEY = getPublicKey(LOCAL_PRIVATE_KEY);
 
 const NOSTR_RELAY = process.env.NEXT_PUBLIC_NOSTR_RELAY!;
 
-const relays = [NOSTR_RELAY];
+const relays = [NOSTR_RELAY, "wss://relay.hodl.ar", "wss://relay.damus.io"];
 const relayPool = relayInit(NOSTR_RELAY);
 
 // Context
