@@ -7,7 +7,14 @@ import {
   useState,
 } from "react";
 
-// Tools
+// Types
+import type { Dispatch, SetStateAction } from "react";
+import type { Event, UnsignedEvent } from "nostr-tools";
+import type { IMenuItem } from "~/types/menu";
+import { useLN } from "./LN";
+import type { NDKEvent } from "@nostr-dev-kit/ndk";
+
+// Utils
 import { useNostr } from "./Nostr";
 import {
   calcTotal,
@@ -16,12 +23,6 @@ import {
   parseZapInvoice,
 } from "~/lib/utils";
 import { getEventHash, getSignature } from "nostr-tools";
-
-// Types
-import type { Dispatch, SetStateAction } from "react";
-import type { Event, UnsignedEvent } from "nostr-tools";
-import type { IMenuItem } from "~/types/menu";
-import { useLN } from "./LN";
 
 // Interface
 export interface IOrderContext {
@@ -32,12 +33,12 @@ export interface IOrderContext {
   fiatAmount: number;
   fiatCurrency?: string;
   items?: IMenuItem[];
-  zapEvents: Event[];
+  zapEvents: NDKEvent[];
   currentInvoice?: string;
   setCurrentInvoice?: Dispatch<SetStateAction<string | undefined>>;
-  setOrderEvent?: Dispatch<SetStateAction<Event | undefined>>;
+  setOrderEvent?: Dispatch<SetStateAction<NDKEvent | undefined>>;
   generateOrderEvent?: (content: unknown) => Event;
-  addZapEvent?: (event: Event) => void;
+  addZapEvent?: (event: NDKEvent) => void;
   setItems?: Dispatch<SetStateAction<IMenuItem[]>>;
   requestZapInvoice?: (
     amountMillisats: number,
@@ -64,7 +65,7 @@ const SAT_ARS_RATE = 0.18;
 
 export const OrderProvider = ({ children }: IOrderProviderProps) => {
   const [orderId, setOrderId] = useState<string>();
-  const [orderEvent, setOrderEvent] = useState<Event>();
+  const [orderEvent, setOrderEvent] = useState<NDKEvent>();
   const [amount, setAmount] = useState<number>(0);
   const [currentInvoice, setCurrentInvoice] = useState<string>();
   const [pendingAmount, setPendingAmount] = useState<number>(0);
@@ -72,7 +73,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
   const [fiatAmount, setFiatAmount] = useState<number>(0);
   const [fiatCurrency, setFiatCurrency] = useState<string>("ARS");
   const [items, setItems] = useState<IMenuItem[]>([]);
-  const [zapEvents, setZapEvents] = useState<Event[]>([]);
+  const [zapEvents, setZapEvents] = useState<NDKEvent[]>([]);
 
   const { relays, localPublicKey, localPrivateKey, generateZapEvent } =
     useNostr();
@@ -90,7 +91,7 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
       return;
     }
 
-    const description = parseOrderDescription(orderEvent);
+    const description = parseOrderDescription(orderEvent as Event);
 
     setOrderId(orderEvent.id);
     setAmount(description.amount);
@@ -153,8 +154,8 @@ export const OrderProvider = ({ children }: IOrderProviderProps) => {
     relays,
   ]);
 
-  const addZapEvent = useCallback((event: Event) => {
-    const invoice = parseZapInvoice(event);
+  const addZapEvent = useCallback((event: NDKEvent) => {
+    const invoice = parseZapInvoice(event as Event);
     if (!invoice.complete) {
       console.info("Incomplete invoice");
       return;

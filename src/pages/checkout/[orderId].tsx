@@ -3,14 +3,14 @@ import QRCode from "react-qr-code";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useNostr } from "~/contexts/Nostr";
-import { type Event, validateEvent } from "nostr-tools";
+import { validateEvent } from "nostr-tools";
 import bolt11 from "bolt11";
 import { useLN } from "~/contexts/LN";
 import { useOrder } from "~/contexts/Order";
-import { parseZapInvoice } from "~/lib/utils";
 import { Progress } from "react-sweet-progress";
 import "react-sweet-progress/lib/style.css";
 import type { NDKEvent } from "@nostr-dev-kit/ndk";
+import Zap from "~/components/Zap";
 
 export default function Home() {
   const {
@@ -56,7 +56,7 @@ export default function Home() {
       }
 
       console.info("Setting new order");
-      setOrderEvent!(event as Event);
+      setOrderEvent!(event);
       setIsLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,7 +114,7 @@ export default function Home() {
       console.info("Zap received");
     }
 
-    addZapEvent!(event as Event);
+    addZapEvent!(event);
     console.info("Amount paid : " + decodedPaidInvoice.millisatoshis);
   };
 
@@ -179,25 +179,12 @@ export default function Home() {
                 {zapEvents.length < 1 ? (
                   <div>Sin pagos</div>
                 ) : (
-                  <h2>Zaps recibidos</h2>
+                  <h2>Zaps recibidos ({totalPaid} sats)</h2>
                 )}
-                <div>
-                  {zapEvents.map((event, k) => {
-                    const invoice = parseZapInvoice(event);
-                    const previousEvent = JSON.parse(
-                      event.tags.find((tag) => tag[0] === "description")![1]!
-                    ) as NDKEvent;
-                    return (
-                      <div key={k} className="border-2 border-solid p-4">
-                        <div>{previousEvent.pubkey}</div>
-                        <div>
-                          {parseInt(invoice.millisatoshis!) / 1000} sats
-                        </div>
-                        <div>Timestamp: {invoice.timestamp}</div>
-                        <div>{previousEvent.content}</div>
-                      </div>
-                    );
-                  })}
+                <div className="grid">
+                  {zapEvents.map((event) => (
+                    <Zap key={event.id} event={event}></Zap>
+                  ))}
                 </div>
               </div>
 

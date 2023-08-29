@@ -20,6 +20,7 @@ export interface INostrContext {
   localPublicKey?: string;
   localPrivateKey?: string;
   relays?: string[];
+  ndk: NDK;
   generateZapEvent?: (
     amountMillisats: number,
     postEventId?: string
@@ -27,14 +28,6 @@ export interface INostrContext {
   subscribeZap?: (eventId: string) => NDKSubscription;
   getEvent?: (eventId: string) => Promise<NDKEvent | null>;
   publish?: (_event: Event) => Promise<Set<NDKRelay>>;
-}
-
-// Context
-export const NostrContext = createContext<INostrContext>({});
-
-// Component Props
-interface INostrProviderProps {
-  children: React.ReactNode;
 }
 
 const LOCAL_PRIVATE_KEY = process.env.NEXT_PUBLIC_LOCAL_PRIVATE_KEY!;
@@ -45,15 +38,23 @@ const NOSTR_RELAY = process.env.NEXT_PUBLIC_NOSTR_RELAY!;
 const relays = [NOSTR_RELAY];
 const relayPool = relayInit(NOSTR_RELAY);
 
+// Context
+const ndk = new NDK({
+  explicitRelayUrls: relays,
+});
+
+export const NostrContext = createContext<INostrContext>({ ndk });
+
+// Component Props
+interface INostrProviderProps {
+  children: React.ReactNode;
+}
+
 import NDK, {
   NDKEvent,
   type NDKRelay,
   type NDKSubscription,
 } from "@nostr-dev-kit/ndk";
-
-const ndk = new NDK({
-  explicitRelayUrls: relays,
-});
 
 export const NostrProvider = ({ children }: INostrProviderProps) => {
   const { recipientPubkey, destination } = useLN();
@@ -138,6 +139,7 @@ export const NostrProvider = ({ children }: INostrProviderProps) => {
         localPublicKey: LOCAL_PUBLIC_KEY,
         localPrivateKey: LOCAL_PRIVATE_KEY,
         relays,
+        ndk,
         generateZapEvent,
         subscribeZap,
         getEvent,
