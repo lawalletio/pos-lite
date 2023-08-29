@@ -1,16 +1,25 @@
-import Head from "next/head";
-import QRCode from "react-qr-code";
+// React / Next
 import { useCallback, useEffect, useState } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
-import { useNostr } from "~/contexts/Nostr";
-import { validateEvent } from "nostr-tools";
+
+// Libs
 import bolt11 from "bolt11";
+import { validateEvent } from "nostr-tools";
+
+// Hooks
+import { useNostr } from "~/contexts/Nostr";
 import { useLN } from "~/contexts/LN";
 import { useOrder } from "~/contexts/Order";
+
+// Types
+import type { NDKEvent } from "@nostr-dev-kit/ndk";
+
+// Components
+import Zap from "~/components/Zap";
+import QRCode from "react-qr-code";
 import { Progress } from "react-sweet-progress";
 import "react-sweet-progress/lib/style.css";
-import type { NDKEvent } from "@nostr-dev-kit/ndk";
-import Zap from "~/components/Zap";
 
 export default function Home() {
   const {
